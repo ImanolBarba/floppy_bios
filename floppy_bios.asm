@@ -315,6 +315,11 @@ set_interrupts:
 	mov	word [vect_int_1E],int_1E
 	mov	word [vect_int_1E+2],cs
 
+; blank INT 13h redirect to determine later if it was set or not
+	mov	bx, vect_int_13_redirect
+	mov	word [bx], 00h
+	mov	word [bx+2], 00h
+
 ; check if the original INT 13h points to the INT 13h entry point
 ; (this means that no hard drive BIOS was installed)
 

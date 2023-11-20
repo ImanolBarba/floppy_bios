@@ -74,6 +74,28 @@ int_13_flags_l	equ	int_13_flags
 ;			AH = error code
 ;-------------------------------------------------------------------------
 int_13:
+
+; check if redirect was set
+        push ax
+        push bx
+	mov bx, vect_int_13_redirect
+	mov word ax, [bx]
+	test ax, ax
+	jnz .determine_redirect
+	mov word ax, [bx+2]
+	test ax, ax
+	jnz .determine_redirect
+	pop bx
+	pop ax
+	jmp .int_13_start
+
+; if dl > 7Fh, call the redirected INT 13h
+.determine_redirect:
+	cmp dl, 80h
+	jb .int_13_start
+	jmp word 0x0000:vect_int_13_redirect	; far jump to redirected INT 13h
+
+.int_13_start:
 	sti
 	push	ax
 	push	bx
