@@ -38,11 +38,12 @@ refresh_flag	equ	10h	; refresh flag, toggles every 15us
 ;------------------------------------------------------------------------
 ; Interrupt vectors
 
-vect_int_08	equ	(08h*4)
-vect_int_13	equ	(13h*4)
-vect_int_19	equ	(19h*4)
-vect_int_1E	equ	(1Eh*4)
-vect_int_40	equ	(40h*4)
+vect_int_08		equ	(08h*4)
+vect_int_13		equ	(13h*4)
+vect_int_19		equ	(19h*4)
+vect_int_1E		equ	(1Eh*4)
+vect_int_40		equ	(40h*4)
+vect_int_13_redirect	equ	(0F5h*4)
 
 ;------------------------------------------------------------------------
 ; BIOS data area variables
@@ -314,24 +315,42 @@ set_interrupts:
 	mov	word [vect_int_1E],int_1E
 	mov	word [vect_int_1E+2],cs
 
-	mov	bx,vect_int_40
-	mov	si,msg_int40
-
 ; check if the original INT 13h points to the INT 13h entry point
 ; (this means that no hard drive BIOS was installed)
 
 	cmp	word [vect_int_13],0EC59h ; BIOS INT 13h entry point (offset)
-	jne	.set_floppy_isr		; looks like INT 13h was changed
+	jne	.save_disk_isr		; looks like INT 13h was changed
 	cmp	word [vect_int_13+2],0F000h ; BIOS INT 13h entry point (segment)
-	jne	.set_floppy_isr		; looks like INT 13h was changed
-	mov	bx,vect_int_13
-	mov	si,msg_int13
+	jne	.save_disk_isr		; looks like INT 13h was changed
+	jmp	.install_isr
 
-.set_floppy_isr:
+.save_disk_isr:
+	mov	bx, vect_int_13
+	mov	word ax, [bx]
+	mov	word cx, [bx+2]
+	mov	bx, vect_int_13_redirect
+	mov	word [bx], ax
+	mov	word [bx+2], cx
+
+; install ISR on int 40h for compatibility purposes
+
+	mov	bx,vect_int_40
+	mov	si,msg_int40
 	mov	word [bx],int_13
 	mov	word [bx+2],cs
 	sti
 	call	print
+
+.install_isr:
+; install ISR on int 13h
+
+	mov	bx,vect_int_13
+	mov	si,msg_int13
+	mov	word [bx],int_13
+	mov	word [bx+2],cs
+	sti
+	call	print
+
 .exit:
 	ret
 
